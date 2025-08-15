@@ -11,6 +11,7 @@ run_benchmark() {
     for i in {1..5}; do
         time_output=$($cmd)
         times+=("$time_output")
+        echo -n "$(printf "%.3f" $(echo "$time_output / 1000000000" | bc -l))s "
     done
     
     # Calculate stats (convert nanoseconds to seconds)
@@ -20,7 +21,7 @@ times_str = '${times[*]}'
 times = [float(t) / 1e9 for t in times_str.split()]
 avg = sum(times)/len(times)
 std = math.sqrt(sum((x - avg)**2 for x in times) / len(times))
-print(f'avg: {avg:.3f}±{std:.3f}s, min: {min(times):.3f}s, max: {max(times):.3f}s')
+print(f'| avg: {avg:.3f}±{std:.3f}s, min: {min(times):.3f}s, max: {max(times):.3f}s')
 with open('/tmp/avg_time', 'w') as f:
     f.write(str(avg))
 "
@@ -42,13 +43,6 @@ go_single=$(cat /tmp/avg_time)
 echo -n "Go Multi Thread:      "
 run_benchmark "./go_multi $TASK_SIZE $NUM_TASKS"
 go_multi=$(cat /tmp/avg_time)
-
-python3 -c "
-go_single = $go_single
-go_multi = $go_multi
-
-print(f'Go Multi vs Single:        {go_single/go_multi:.2f}x speedup')
-"
 
 echo -n "Python Single Thread: "
 run_benchmark "python3 single_thread.py $TASK_SIZE $NUM_TASKS"
