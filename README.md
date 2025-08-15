@@ -1,65 +1,94 @@
-# Python GIL vs Go Parallelism Benchmark
+# Multi-Language Threading Performance Benchmark
 
-This benchmark compares Python's Global Interpreter Lock (GIL) limitations with Go's parallelism for CPU-bound tasks.
+CPU-bound task execution comparing threading implementations across C, Go, and Python.
 
-## What it tests
+## Methodology
 
-### Python (with GIL)
-- **Single Thread**: Baseline performance (45.3s)
-- **Multi Thread**: Multiple threads in one process - GIL prevents parallelism (45.5s)
-- **Multi Process**: Multiple processes bypass GIL (4.6s)
+**Task**: Identical mathematical operations (280M floating-point calculations per run)
+**Workload**: 20M iterations × 14 concurrent tasks
+**Hardware**: 14 CPU cores
+**Measurement**: 5 runs per configuration, statistical analysis
 
-### Go (no GIL)
-- **Single Thread**: Baseline performance (1.9s)
-- **Multi Thread**: Parallelism with goroutines (0.18s)
+### Implementations
 
-## Benchmark Results
+**C**: POSIX threads (pthread)
+**Go**: Goroutines with runtime scheduler  
+**Python**: Threading module + ProcessPoolExecutor
 
-**Task**: 20M iterations × 14 tasks on 14 CPU cores (5 runs each)
+## Data
 
-| Language | Single Thread | Multi Thread | Multi Process |
-|----------|---------------|--------------|---------------|
-| Python   | 45.3±0.1s     | 45.5±0.1s    | 4.6±0.2s      |
-| Go       | 1.9±0.2s      | 0.18±0.01s   | N/A*          |
+| Language | Single Thread  | Multi Thread  | Multi Process |
+|----------|----------------|---------------|---------------|
+| C        |  3.540±0.009s  |  0.329±0.014s | -             |
+| Go       |  1.889±0.078s  |  0.195±0.005s | -             |
+| Python   | 45.312±0.080s  | 45.48±0.1500s | 4.57±0.20s    |
 
-*Go multi-process is N/A because Go's goroutines already achieve parallelism without the GIL limitation that Python has. Go's runtime scheduler automatically distributes goroutines across all available CPU cores within a single process, allowing each goroutine to run on separate cores simultaneously.
+## Results
 
-## Performance Summary
+**Threading Speedup (Multi-thread vs Single-thread):**
+- C: 10.76x
+- Go: 9.69x  
+- Python: 0.99x
 
-- **Go Multi vs Single**: 10.5x speedup
-- **Python Multi vs Single**: 0.99x (slower due to GIL)
-- **Python Process vs Single**: 9.9x speedup
+**Process Speedup (Multi-process vs Single-thread):**
+- Python: 9.91x
 
-## Key Insights
+## Analysis
 
-- **Python GIL**: Completely prevents CPU parallelism in threads
-- **Python Workaround**: Multi-processing achieves ~10x speedup but with process overhead
-- **Go Advantage**: Native goroutines achieve 10.5x parallelism with minimal overhead
+Python threading shows 0.99x speedup, indicating serialized execution due to Global Interpreter Lock (GIL). C and Go threading achieve ~10x speedup, demonstrating parallel execution across CPU cores. Python multiprocessing achieves 9.91x speedup by bypassing GIL through separate processes.
+
+**Note**: Execution times should not be compared across languages. This benchmark measures threading behavior within each language, not language performance.
 
 ## Usage
 
 ```bash
-# Run full comparison (recommended)
+# Run all language benchmarks
 ./run_comparison.sh
 
-# Or individually with custom parameters
-python3 single_thread.py 20000000 14
-go run go_single.go 20000000 14
+# Or run individual languages
+./run_c.sh 20000000 14
+./run_go.sh 20000000 14
+./run_python.sh 20000000 14
 ```
 
 ## Raw Output
 
 ```
-Python GIL vs Go Benchmark Results (5 runs each)
 Task Size: 20000000, Num Tasks: 14
-================================================
+C Single Thread:      3.541s 3.554s 3.528s 3.532s 3.546s | avg: 3.540±0.009s, min: 3.528s, max: 3.554s
+C Multi Thread:       0.326s 0.327s 0.315s 0.355s 0.323s | avg: 0.329±0.014s, min: 0.315s, max: 0.355s
+C Thread vs Single: 10.76x
 
-Go Single Thread:     2.149s 1.903s 1.844s 2.089s 1.743s | avg: 1.946±0.152s, min: 1.743s, max: 2.149s
-Go Multi Thread:      0.197s 0.177s 0.184s 0.190s 0.178s | avg: 0.185±0.008s, min: 0.177s, max: 0.197s
-Python Single Thread: 45.060s 45.267s 45.442s 45.242s 45.245s | avg: 45.251±0.121s, min: 45.060s, max: 45.442s
-Python Multi Thread:  45.522s 45.580s 45.611s 45.501s 45.193s | avg: 45.482±0.149s, min: 45.193s, max: 45.611s
-Python Multi Process: 4.228s 4.674s 4.485s 4.786s 4.666s | avg: 4.568±0.195s, min: 4.228s, max: 4.786s
-Go Multi vs Single:        10.50x speedup
-Python Multi vs Single:    0.99x (slower due to GIL)
-Python Process vs Single:  9.91x speedup
+Task Size: 20000000, Num Tasks: 14
+Go Single Thread:     1.818s 1.963s 1.795s 1.992s 1.875s | avg: 1.889±0.078s, min: 1.795s, max: 1.992s
+Go Multi Thread:      0.191s 0.187s 0.201s 0.200s 0.196s | avg: 0.195±0.005s, min: 0.187s, max: 0.201s
+Go Goroutine vs Single: 9.69x
+
+Task Size: 20000000, Num Tasks: 14
+Python Single Thread: 45.442s 45.212s 45.357s 45.267s 45.281s | avg: 45.312±0.080s, min: 45.212s, max: 45.442s
+Python Multi Thread:  45.722s 45.479s 45.644s 46.144s 45.500s | avg: 45.698±0.241s, min: 45.479s, max: 46.144s
+Python Multi Process: 4.259s 4.440s 4.713s 4.778s 4.736s | avg: 4.585±0.202s, min: 4.259s, max: 4.778s
+Python Thread vs Single:    0.99x
+Python Process vs Single:  9.88x
 ```
+
+## Files
+
+**C Implementation:**
+- `c_single.c` - C single-threaded baseline
+- `c_multi.c` - C multi-threading with POSIX threads
+- `run_c.sh` - C benchmark script
+
+**Go Implementation:**
+- `go_single.go` - Go single-threaded baseline
+- `go_multi.go` - Go multi-threading with goroutines
+- `run_go.sh` - Go benchmark script
+
+**Python Implementation:**
+- `single_thread.py` - Python single-threaded baseline
+- `multi_thread.py` - Python multi-threading (GIL limited)
+- `multi_process.py` - Python multi-processing (GIL bypass)
+- `run_python.sh` - Python benchmark script
+
+**Main Script:**
+- `run_comparison.sh` - Runs all language benchmarks
