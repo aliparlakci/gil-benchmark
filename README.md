@@ -17,18 +17,24 @@ This benchmark compares Python's Global Interpreter Lock (GIL) limitations with 
 
 **Task**: 20M iterations × 14 tasks on 14 CPU cores (5 runs each)
 
-| Language | Single Thread | Multi Thread | Multi Process | Thread Speedup  |
-|----------|---------------|--------------|---------------|-----------------|
-| Python   | 45.3±0.1s     | 45.5±0.1s    | 4.6±0.2s      | 0.99x (no gain) |
-| Go       | 1.9±0.2s      | 0.18±0.01s   | N/A*          | 10.5x speedup   |
+| Language | Single Thread | Multi Thread | Multi Process |
+|----------|---------------|--------------|---------------|
+| Python   | 45.3±0.1s     | 45.5±0.1s    | 4.6±0.2s      |
+| Go       | 1.9±0.2s      | 0.18±0.01s   | N/A*          |
 
 *Go multi-process is N/A because Go's goroutines already achieve parallelism without the GIL limitation that Python has. Go's runtime scheduler automatically distributes goroutines across all available CPU cores within a single process, allowing each goroutine to run on separate cores simultaneously.
 
 ## Performance Summary
 
-- **Go Multi vs Single**: 10.5x speedup - parallelism
-- **Python Multi vs Single**: 0.99x - no speedup due to GIL
-- **Python Process vs Single**: 9.9x speedup - bypasses GIL
+- **Go Multi vs Single**: 10.5x speedup
+- **Python Multi vs Single**: 0.99x (slower due to GIL)
+- **Python Process vs Single**: 9.9x speedup
+
+## Key Insights
+
+- **Python GIL**: Completely prevents CPU parallelism in threads
+- **Python Workaround**: Multi-processing achieves ~10x speedup but with process overhead
+- **Go Advantage**: Native goroutines achieve 10.5x parallelism with minimal overhead
 
 ## Usage
 
@@ -57,18 +63,3 @@ Go Multi vs Single:        10.50x speedup
 Python Multi vs Single:    0.99x (slower due to GIL)
 Python Process vs Single:  9.91x speedup
 ```
-
-## Key Insights
-
-- **Python GIL**: Completely prevents CPU parallelism in threads
-- **Python Workaround**: Multi-processing achieves ~10x speedup but with process overhead
-- **Go Advantage**: Native goroutines achieve 10.5x parallelism with minimal overhead
-
-## Files
-
-- `single_thread.py` - Python single-threaded baseline
-- `multi_thread.py` - Python multi-threading (GIL limited)
-- `multi_process.py` - Python multi-processing (GIL bypass)
-- `go_single.go` - Go single-threaded baseline
-- `go_multi.go` - Go multi-threaded (parallelism)
-- `run_comparison.sh` - Complete benchmark suite
